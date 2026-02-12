@@ -60,9 +60,10 @@ def authenticate_gmail():
 
 class ReadEmailsInput(BaseModel):
     date: str = Field(description="Natural language date like Feb 11th 2026")
+    sender: str | None = Field(default=None, description="Email address of sender to filter")
 
 
-def read_and_summarize(date: str):
+def read_and_summarize(date: str,sender: str | None = None):
     service = authenticate_gmail()
 
     date_obj = date_parser.parse(date)
@@ -70,12 +71,15 @@ def read_and_summarize(date: str):
 
     query = f"after:{date_obj.strftime('%Y/%m/%d')} before:{next_day.strftime('%Y/%m/%d')}"
 
+    if sender:
+        query += f" from:{sender}"
+
     results = service.users().messages().list(
         userId="me",
         q=query
     ).execute()
 
-    messages = results.get("messages", [])
+    messages = results.get("messages", [])[:12]
 
     if not messages:
         return "No emails found for that date."
@@ -176,7 +180,7 @@ agent = create_agent(
 
 if __name__ == "__main__":
 
-    user_prompt = "Send the summarized content which have received on Feb 10th 2026 to richasrireddy@gmail.com"
+    user_prompt = "Send the summarized content which have received on Feb 12th 2026  to *****@gmail.com"
 
     # Stream the results using LangGraph API
     for chunk in agent.stream({"messages": [HumanMessage(content=user_prompt)]}):
